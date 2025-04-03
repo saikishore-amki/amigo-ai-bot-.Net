@@ -4,7 +4,6 @@ import { createWebSocket, fetchInitialData } from './services/UpLinkAPI';
 import { FaSignInAlt, FaSignOutAlt } from 'react-icons/fa';
 import './App.css';
 
-// Define icon components explicitly to satisfy TypeScript
 const SignInIcon = FaSignInAlt as React.FC;
 const SignOutIcon = FaSignOutAlt as React.FC;
 
@@ -86,28 +85,45 @@ const Dashboard: React.FC<{ accessToken: string | null, setAccessToken: (token: 
 
 const Callback: React.FC<{ setAccessToken: (token: string | null) => void }> = ({ setAccessToken }) => {
   const location = useLocation();
+  const [hasFetched, setHasFetched] = useState(false);
 
   useEffect(() => {
+    if (hasFetched) {
+      console.log('Callback: Already fetched, skipping...');
+      return;
+    }
+
     const urlParams = new URLSearchParams(location.search);
     const code = urlParams.get('code');
+    console.log('Callback triggered with code:', code);
     if (code) {
       const getAccessToken = async () => {
         try {
+          console.log('Sending POST to get-access-token with code:', code);
           const response = await fetch('http://localhost:5039/api/auth/get-access-token', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ code }),
           });
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to fetch access token: ${response.status} ${errorText}`);
+          }
           const data = await response.json();
+          console.log('Access token response:', data);
           setAccessToken(data.accessToken);
+          setHasFetched(true);
           window.history.replaceState({}, document.title, '/');
         } catch (err) {
           console.error('Error fetching access token:', err);
+          setHasFetched(true);
         }
       };
       getAccessToken();
+    } else {
+      console.error('No code found in callback URL');
     }
-  }, [location, setAccessToken]);
+  }, [location, setAccessToken, hasFetched]);
 
   return <div>Loading...</div>;
 };
@@ -131,9 +147,13 @@ const App: React.FC = () => {
                 ) : (
                   <button
                     onClick={() => {
+                      console.log('Fetching login URL');
                       fetch('http://localhost:5039/api/auth/login-url')
                         .then((res) => res.json())
-                        .then((data) => (window.location.href = data.loginUrl))
+                        .then((data) => {
+                          console.log('Login URL received:', data.loginUrl);
+                          window.location.href = data.loginUrl;
+                        })
                         .catch((err) => console.error('Error fetching login URL:', err));
                     }}
                   >

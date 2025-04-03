@@ -27,6 +27,15 @@ public class AuthController : ControllerBase
         }
     }
 
+    [HttpGet("get-access-token")]
+    public IActionResult GetAccessTokenGet()
+    {
+        var queryString = Request.QueryString.ToString();
+        var headers = Request.Headers.ToString();
+        Console.WriteLine($"Unexpected GET request to /api/auth/get-access-token. Query: {queryString}, Headers: {headers}");
+        return BadRequest(new { error = "This endpoint requires a POST request with a JSON body containing 'code'." });
+    }
+
     [HttpGet("login-url")]
     public IActionResult GetLoginUrl()
     {
