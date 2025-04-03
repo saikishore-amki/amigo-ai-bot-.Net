@@ -14,19 +14,25 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("get-access-token")]
-    public async Task<IActionResult> GetAccessToken([FromBody] AccessTokenRequest request)
+public async Task<IActionResult> GetAccessToken([FromBody] AccessTokenRequest request)
+{
+    try
     {
-        try
+        if (request == null || string.IsNullOrEmpty(request.Code))
         {
-            var accessToken = await _upstoxService.GetAccessTokenAsync(request.Code);
-            return Ok(new { accessToken });
+            Console.WriteLine("Invalid request: Code is missing");
+            return BadRequest(new { error = "Code is required" });
         }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { error = "Failed to fetch access token", details = ex.Message });
-        }
+        Console.WriteLine($"Received POST to get-access-token with code: {request.Code}");
+        var accessToken = await _upstoxService.GetAccessTokenAsync(request.Code);
+        return Ok(new { accessToken });
     }
-
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error in GetAccessToken: {ex.Message}, StackTrace: {ex.StackTrace}");
+        return StatusCode(500, new { error = "Failed to fetch access token", details = ex.Message });
+    }
+}
     [HttpGet("get-access-token")]
     public IActionResult GetAccessTokenGet()
     {

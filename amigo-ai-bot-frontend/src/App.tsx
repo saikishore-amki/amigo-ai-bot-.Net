@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import { createWebSocket, fetchInitialData } from './services/UpLinkAPI';
 import { FaSignInAlt, FaSignOutAlt } from 'react-icons/fa';
+import ErrorBoundary from './ErrorBoundary';
 import './App.css';
 
 const SignInIcon = FaSignInAlt as React.FC;
@@ -83,11 +84,13 @@ const Dashboard: React.FC<{ accessToken: string | null, setAccessToken: (token: 
   );
 };
 
-const Callback: React.FC<{ setAccessToken: (token: string | null) => void }> = ({ setAccessToken }) => {
+const Callback: React.FC<{ setAccessToken: (token: string | null) => void; hasFetched: boolean; setHasFetched: (value: boolean) => void }> = ({ setAccessToken, hasFetched, setHasFetched }) => {
   const location = useLocation();
-  const [hasFetched, setHasFetched] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+
     if (hasFetched) {
       console.log('Callback: Already fetched, skipping...');
       return;
@@ -96,7 +99,7 @@ const Callback: React.FC<{ setAccessToken: (token: string | null) => void }> = (
     const urlParams = new URLSearchParams(location.search);
     const code = urlParams.get('code');
     console.log('Callback triggered with code:', code);
-    if (code) {
+    if (code && isMounted) {
       const getAccessToken = async () => {
         try {
           console.log('Sending POST to get-access-token with code:', code);
@@ -111,61 +114,81 @@ const Callback: React.FC<{ setAccessToken: (token: string | null) => void }> = (
           }
           const data = await response.json();
           console.log('Access token response:', data);
-          setAccessToken(data.accessToken);
-          setHasFetched(true);
-          window.history.replaceState({}, document.title, '/');
-        } catch (err) {
+          if (isMounted) {
+            setAccessToken(data.accessToken);
+            setHasFetched(true);
+            window.history.replaceState({}, document.title, '/');
+          }
+        } catch (err: unknown) {
+          // Handle the unknown error type
+          const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
           console.error('Error fetching access token:', err);
-          setHasFetched(true);
+          if (isMounted) {
+            setError(errorMessage);
+            setHasFetched(true);
+          }
         }
       };
       getAccessToken();
-    } else {
+    } else if (!code && isMounted) {
       console.error('No code found in callback URL');
+      setError('No authorization code found in URL');
     }
-  }, [location, setAccessToken, hasFetched]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [location, setAccessToken, hasFetched, setHasFetched]);
+
+  if (error) {
+    return <div>Error: {error}. Please <a href="/">try again</a>.</div>;
+  }
 
   return <div>Loading...</div>;
 };
 
 const App: React.FC = () => {
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [hasFetched, setHasFetched] = useState(false);
 
   return (
     <Router>
-      <div className="App">
-        <header className="App-header">
-          <h1>Amigo Trading Bot</h1>
-        </header>
-        <main>
-          <Routes>
-            <Route
-              path="/"
-              element={
-                accessToken ? (
-                  <Dashboard accessToken={accessToken} setAccessToken={setAccessToken} />
-                ) : (
-                  <button
-                    onClick={() => {
-                      console.log('Fetching login URL');
-                      fetch('http://localhost:5039/api/auth/login-url')
-                        .then((res) => res.json())
-                        .then((data) => {
-                          console.log('Login URL received:', data.loginUrl);
-                          window.location.href = data.loginUrl;
-                        })
-                        .catch((err) => console.error('Error fetching login URL:', err));
-                    }}
-                  >
-                    <SignInIcon /> Login with Upstox
-                  </button>
-                )
-              }
-            />
-            <Route path="/callback" element={<Callback setAccessToken={setAccessToken} />} />
-          </Routes>
-        </main>
-      </div>
+      <ErrorBoundary>
+        <div className="App">
+          <header className="App-header">
+            <h1>Amigo Trading Bot</h1>
+          </header>
+          <main>
+            <Routes>
+              <Route
+                path="/"
+                element={
+                  accessToken ? (
+                    <Dashboard accessToken={accessToken} setAccessToken={setAccessToken} />
+                  ) : (
+                    <button
+                      onClick={() => {
+                        console.log('Fetching login URL');
+                        fetch('http://localhost:5039/api/auth/login-url')
+                          .then((res) => res.json())
+                          .then((data) => {
+                            console.log('Login URL received:', data.loginUrl);
+                            window.location.href = data.loginUrl;
+                          })
+                          .catch((err) => console.error('Error fetching login URL:', err));
+                      }}
+                    >
+                      <SignInIcon /> Login with Upstox
+                    </button>
+                  )
+                }
+              />
+              <Route path="/callback" element={<Callback setAccessToken={setAccessToken} hasFetched={hasFetched} setHasFetched={setHasFetched} />} />
+              <Route path="*" element={<div>Unexpected route accessed. Please return to <a href="/">home</a>.</div>} />
+            </Routes>
+          </main>
+        </div>
+      </ErrorBoundary>
     </Router>
   );
 };
