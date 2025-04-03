@@ -1,0 +1,68 @@
+/* src/App.css */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Montserrat', sans-serif;
+  background-color: #121212;
+  color: #FFFFFF;
+  min-height: 100vh;
+}
+
+.App {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.App-header {
+  background-color: #1A1A1A;
+  padding: 15px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.App-header h1 {
+  font-size: 24px;
+  color: #00C4B4;
+}
+
+main {
+  margin-top: 20px;
+}
+
+.dashboard {
+  background-color: #1A1A1A;
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.dashboard h2 {
+  color: #00C4B4;
+  margin-bottom: 10px;
+}
+
+.indicators p, .trade-suggestion p {
+  font-size: 16px;
+  margin: 5px 0;
+}
+
+button {
+  background-color: #00C4B4;
+  color: #1C2526;
+  border: none;
+  padding: 10px 20px;
+  font-size: 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+button:hover {
+  background-color: #00A89A;
+}
